@@ -69,13 +69,3 @@ class RNN():
         self.W_hy -= self.learning_rate * dW_hy
         self.b_h -= self.learning_rate * db_h
         self.b_y -= self.learning_rate * db_y
-
-
-def loss_and_derivatives(ys, target):
-    loss = 0
-    dy = {}
-    t = len(ys) - 1
-    y = ys[t]
-    loss += 0.5 * (y - target) ** 2
-    dy[t] = (y - target)
-    return loss, dy
