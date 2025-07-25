@@ -13,6 +13,7 @@ def create_sequences(X, y, time_steps=10):
 # ---------- FEATURE LSTM MODELS ----------
 features = ['Open', 'High', 'Low', 'Volume']
 timesteps = 30
+epochs = 50 
 
 open_scaler_X = MinMaxScaler()
 open_scaler_y = MinMaxScaler()
@@ -26,7 +27,7 @@ model_open = Sequential()
 model_open.add(LSTM(50, activation='tanh', input_shape=(X_open_train.shape[1], X_open_train.shape[2])))
 model_open.add(Dense(1))
 model_open.compile(optimizer='adam', loss='mse')
-history = model_open.fit(X_open_train, y_open_train, epochs=50, validation_split=0.1, batch_size=16)
+history = model_open.fit(X_open_train, y_open_train, epochs=epochs, validation_split=0.1, batch_size=16)
 
 high_scaler_X = MinMaxScaler()
 high_scaler_y = MinMaxScaler()
@@ -40,7 +41,7 @@ model_high = Sequential()
 model_high.add(LSTM(50, activation='tanh', input_shape=(X_high_train.shape[1], X_high_train.shape[2])))
 model_high.add(Dense(1))
 model_high.compile(optimizer='adam', loss='mse')
-history = model_high.fit(X_high_train, y_high_train, epochs=50, validation_split=0.1, batch_size=16)
+history = model_high.fit(X_high_train, y_high_train, epochs=epochs, validation_split=0.1, batch_size=16)
 
 low_scaler_X = MinMaxScaler()
 low_scaler_y = MinMaxScaler()
@@ -54,7 +55,7 @@ model_low = Sequential()
 model_low.add(LSTM(50, activation='tanh', input_shape=(X_low_train.shape[1], X_low_train.shape[2])))
 model_low.add(Dense(1))
 model_low.compile(optimizer='adam', loss='mse')
-history = model_low.fit(X_low_train, y_low_train, epochs=50, validation_split=0.1, batch_size=16)
+history = model_low.fit(X_low_train, y_low_train, epochs=epochs, validation_split=0.1, batch_size=16)
 
 volume_scaler_X = MinMaxScaler()
 volume_scaler_y = MinMaxScaler()
@@ -65,10 +66,10 @@ split = int(0.8 * len(X_volume_seq))
 X_volume_train, X_volume_test = X_volume_seq[:split], X_volume_seq[split:]
 y_volume_train, y_volume_test = y_volume_seq[:split], y_volume_seq[split:]
 model_volume = Sequential()
-model_volume.add(LSTM(50, activation='tanh', input_shape=(X_volume_train.shape[1], X_volume_train.shape[2])))
+model_volume.add(LSTM(50, activation='relu', input_shape=(X_volume_train.shape[1], X_volume_train.shape[2]))) # relu so it can explode more easily bc volume is very volatile
 model_volume.add(Dense(1))
 model_volume.compile(optimizer='adam', loss='mse')
-history = model_volume.fit(X_volume_train, y_volume_train, epochs=50, validation_split=0.1, batch_size=16)
+history = model_volume.fit(X_volume_train, y_volume_train, epochs=epochs-20, validation_split=0.1, batch_size=16)
 
 
 loss_open = model_open.evaluate(X_open_test, y_open_test)
