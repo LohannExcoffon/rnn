@@ -1,4 +1,5 @@
 import yfinance as yf
+import matplotlib.pyplot as plt
 data = yf.download('TSLA', start='2020-06-28', end='2025-07-22')
 data.columns = data.columns.get_level_values(0)
 print(data.head())
