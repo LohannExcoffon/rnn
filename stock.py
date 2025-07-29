@@ -1,8 +1,55 @@
 import yfinance as yf
 import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+import os
+import pandas as pd
+
+path = "data.parquet"
+
+
+
 data = yf.download('TSLA', start='2020-06-28', end='2025-07-22')
 data.columns = data.columns.get_level_values(0)
 print(data.head())
+
+# save data
+data.to_parquet("data.parquet")
+
+
+def update_data(path, threshold=5):
+    today = datetime.today().date()
+
+    if os.path.exists(path):
+        df = pd.read_parquet(path)
+        last_date = df.index.max().date()
+        delta = (today - last_date).days
+        
+        if delta > threshold:
+            new_df = yf.download('TSLA', start=last_date.strftime("%Y-%m-%d"), end=today.strftime("%Y-%m-%d"))
+            if not new_df.empty:
+                new_df.columns = new_df.columns.get_level_values(0)
+                # Append and remove duplicates
+                updated_df = pd.concat([df, new_df])
+                updated_df = updated_df[~updated_df.index.duplicated(keep='last')]
+                updated_df.to_parquet(path)
+                return updated_df
+            else: 
+                return df
+        else:
+            return df
+    else:
+        print("Data file not found")
+        data = yf.download('TSLA', start='2020-06-28', end=today.strftime("%Y-%m-%d"))
+        df.columns = df.columns.get_level_values(0)
+        df.to_parquet(path)
+        return df
+
+# Example usage:
+data = update_data("data.parquet")
+print(data.tail())
+
+
+
 
 # norm
 data_n = data.apply(lambda x: (x - x.min()) / (x.max() - x.min()))
@@ -30,7 +77,6 @@ plt.show()
 
 
 # ------------- LINEAR REGRESSION MODEL -------------
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
