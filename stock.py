@@ -6,52 +6,46 @@ import pandas as pd
 
 path = "data.parquet"
 
-
-
-data = yf.download('TSLA', start='2020-06-28', end='2025-07-22')
-data.columns = data.columns.get_level_values(0)
-print(data.head())
-
-# save data
-data.to_parquet("data.parquet")
-
-
 def update_data(path, threshold=5):
     today = datetime.today().date()
 
     if os.path.exists(path):
-        df = pd.read_parquet(path)
-        last_date = df.index.max().date()
+        data = pd.read_parquet(path)
+        last_date = data.index.max().date()
         delta = (today - last_date).days
-        
+
         if delta > threshold:
-            new_df = yf.download('TSLA', start=last_date.strftime("%Y-%m-%d"), end=today.strftime("%Y-%m-%d"))
-            if not new_df.empty:
-                new_df.columns = new_df.columns.get_level_values(0)
+            new_data = yf.download('TSLA', start=last_date.strftime("%Y-%m-%d"), end=today.strftime("%Y-%m-%d"))
+            if not new_data.empty:
+                new_data.columns = new_data.columns.get_level_values(0)
+                clean_data(new_data)
                 # Append and remove duplicates
-                updated_df = pd.concat([df, new_df])
-                updated_df = updated_df[~updated_df.index.duplicated(keep='last')]
-                updated_df.to_parquet(path)
-                return updated_df
-            else: 
-                return df
+                updated_data = pd.concat([data, new_data])
+                updated_data = updated_data[~updated_data.index.duplicated(keep='last')]
+                updated_data.to_parquet(path)
+                return updated_data
+            else:
+                return data
         else:
-            return df
+            return data
     else:
         print("Data file not found")
         data = yf.download('TSLA', start='2020-06-28', end=today.strftime("%Y-%m-%d"))
-        df.columns = df.columns.get_level_values(0)
-        df.to_parquet(path)
-        return df
+        data.columns = data.columns.get_level_values(0)
+        clean_data(data)
+        data.to_parquet(path)
+        return data
 
-# Example usage:
+def clean_data(data):
+    data['Weekday'] = ''
+    for index, row in data.iterrows():
+        data.at[index, 'Weekday'] = index.weekday()
+
+# ---------- GET DATA -------------
 data = update_data("data.parquet")
-print(data.tail())
+print(data.head())
 
-
-
-
-# norm
+# normalize
 data_n = data.apply(lambda x: (x - x.min()) / (x.max() - x.min()))
 print(data_n)
 
