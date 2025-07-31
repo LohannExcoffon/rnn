@@ -62,7 +62,7 @@ plt.show()
 # ------------- LINEAR REGRESSION MODEL -------------
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 features = ['Open', 'High', 'Low', 'Volume', 'Weekday']
@@ -79,24 +79,22 @@ X[features_to_scale] = scale_X.fit_transform(data[features_to_scale])
 y = scale_y.fit_transform(data[['Close']]).ravel()
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
-model = LinearRegression()
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-
-results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
-print(results.head())
-
-# plot entire stock w/ predictions
-y_pred = model.predict(X)
-x_indices = range(len(X))
-plt.plot(x_indices, y_pred)
-plt.plot(x_indices, y)
-plt.xlabel('Time Step')
-plt.ylabel('Prediction')
-plt.title('Predictions')
-
-
-
+def linearRegression():
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    
+    results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
+    print(results.head())
+    
+    # plot entire stock w/ predictions
+    y_pred = model.predict(X)
+    x_indices = range(len(X))
+    plt.plot(x_indices, y_pred)
+    plt.plot(x_indices, y)
+    plt.xlabel('Time Step')
+    plt.ylabel('Prediction')
+    plt.title('Predictions')
 
 
 # ------------- LSTM MODEL -------------
@@ -107,58 +105,39 @@ def create_sequences(X, y, time_steps=10):
         ys.append(y[i + time_steps])
     return np.array(Xs), np.array(ys)
 
-from sklearn.preprocessing import MinMaxScaler
+def lstm():
+    time_steps = 20
+    
+    X_seq, y_seq = create_sequences(X, y, time_steps)
+    split = int(0.8 * len(X_seq))
+    X_train, X_test = X_seq[:split], X_seq[split:]
+    y_train, y_test = y_seq[:split], y_seq[split:]
+    
+    model = Sequential()
+    model.add(LSTM(50, activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mse')
+    
+    history = model.fit(X_train, y_train, epochs=10, validation_split=0.1, batch_size=16)
+    y_pred = model.predict(X_test)
+    
+    loss = model.evaluate(X_test, y_test)
+    print(f"Test MSE: {loss}")
+    
+    y_scaler = MinMaxScaler()
+    y_scaler.fit(data[[target]])
+    y_pred_inv = y_scaler.inverse_transform(y_pred.reshape(-1, 1))
+    y_test_inv = y_scaler.inverse_transform(y_test.reshape(-1, 1))
+    
+    mse = mean_squared_error(y_test_inv, y_pred_inv)
+    print("Test MSE:", mse)
 
-features = ['Open', 'High', 'Low', 'Volume']
-target = 'Close'
+    # plot
+    plt.plot(y_test_inv, label='Actual')
+    plt.plot(y_pred_inv, label='Predicted')
+    plt.legend()
+    plt.title('Actual vs Predicted Close Price')
+    plt.show()
 
-# norm
-scaler = MinMaxScaler()
-X_scaled = scaler.fit_transform(data[features])
-y_scaled = scaler.fit_transform(data[[target]])
-
-time_steps = 20
-
-X_seq, y_seq = create_sequences(X_scaled, y_scaled, time_steps)
-split = int(0.8 * len(X_seq))
-X_train, X_test = X_seq[:split], X_seq[split:]
-y_train, y_test = y_seq[:split], y_seq[split:]
-
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-
-model = Sequential()
-model.add(LSTM(50, activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])))
-model.add(Dense(1))
-model.compile(optimizer='adam', loss='mse')
-
-history = model.fit(X_train, y_train, epochs=20, validation_split=0.1, batch_size=16)
-y_pred = model.predict(X_test)
-
-loss = model.evaluate(X_test, y_test)
-print(f"Test MSE: {loss}")
-
-y_scaler = MinMaxScaler()
-y_scaler.fit(data[[target]])
-y_pred_inv = y_scaler.inverse_transform(y_pred)
-y_test_inv = y_scaler.inverse_transform(y_test)
-
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-
-# not normalzied
-mse = mean_squared_error(y_test_inv, y_pred_inv)
-mae = mean_absolute_error(y_test_inv, y_pred_inv)
-rmse = np.sqrt(mse)
-r2 = r2_score(y_test_inv, y_pred_inv)
-
-print("Test RMSE:", rmse)
-print("Test MAE:", mae)
-print("Test R² Score:", r2)
-
-
-plt.plot(y_test_inv, label='Actual')
-plt.plot(y_pred_inv, label='Predicted')
-plt.legend()
-plt.title('Actual vs Predicted Close Price')
-plt.show()
+linearRegression()
+lstm()
