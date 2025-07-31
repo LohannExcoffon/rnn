@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import os
 import pandas as pd
+import numpy as np
 
 path = "data.parquet"
 
@@ -45,27 +46,15 @@ def clean_data(data):
 data = update_data("data.parquet")
 print(data.head())
 
-# normalize
-data_n = data.apply(lambda x: (x - x.min()) / (x.max() - x.min()))
-print(data_n)
-
-
 # visualize graphs with price and volume
-import matplotlib.pyplot as plt
-
 data['Open'].plot(figsize=(12,6), title='TSLA Opening Price Over Time')
 plt.xlabel('Date')
 plt.ylabel('Opening Price (USD)')
 plt.show()
 
-data_n['Open'].plot(figsize=(12,6), title='TSLA Normalized Opening Price Over Time')
+data['Volume'].plot(figsize=(12,6), title='TSLA Volume Over Time')
 plt.xlabel('Date')
-plt.ylabel('Normalized Opening Price (USD)')
-plt.show()
-
-data_n['Volume'].plot(figsize=(12,6), title='TSLA Normalized Volume Over Time')
-plt.xlabel('Date')
-plt.ylabel('Normalized Volume')
+plt.ylabel('Volume')
 plt.show()
 
 
@@ -74,26 +63,35 @@ plt.show()
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import MinMaxScaler
 
-features = ['Open', 'High', 'Low', 'Volume']
+features = ['Open', 'High', 'Low', 'Volume', 'Weekday']
+features_to_scale = ['Open', 'High', 'Low', 'Volume']
 target = 'Close'
 
-data_n = data_n.dropna()
-X = data_n[features]
-y = data_n[target]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+scale_X = MinMaxScaler()
+scale_y = MinMaxScaler()
+
+data = data.dropna()
+X = data[features].copy()
+y = data[target]
+X[features_to_scale] = scale_X.fit_transform(data[features_to_scale])
+y = scale_y.fit_transform(data[['Close']]).ravel()
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
 model = LinearRegression()
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
+
 results = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
 print(results.head())
 
+# plot entire stock w/ predictions
 y_pred = model.predict(X)
 x_indices = range(len(X))
 plt.plot(x_indices, y_pred)
 plt.plot(x_indices, y)
-plt.xlabel('Feature')
+plt.xlabel('Time Step')
 plt.ylabel('Prediction')
 plt.title('Predictions')
 
@@ -101,8 +99,7 @@ plt.title('Predictions')
 
 
 
-import numpy as np
-
+# ------------- LSTM MODEL -------------
 def create_sequences(X, y, time_steps=10):
     Xs, ys = [], []
     for i in range(len(X) - time_steps):
