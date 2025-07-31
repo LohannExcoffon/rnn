@@ -33,14 +33,23 @@ def update_data(path, threshold=5):
         print("Data file not found")
         data = yf.download('TSLA', start='2020-06-28', end=today.strftime("%Y-%m-%d"))
         data.columns = data.columns.get_level_values(0)
-        clean_data(data)
+        data = clean_data(data)
         data.to_parquet(path)
         return data
 
 def clean_data(data):
-    data['Weekday'] = ''
-    for index, row in data.iterrows():
-        data.at[index, 'Weekday'] = index.weekday()
+    data['Weekday'] = data.index.weekday
+
+    data['High'] = data['High'].shift(1)
+    data['Low'] = data['Low'].shift(1)
+    data['Open'] = data['Open'].shift(1)
+    data['Volume'] = data['Volume'].shift(1)
+    data['Close t-1'] = data['Close'].shift(1)
+    data.rename(columns={'High': 'High t-1', 'Low': 'Low t-1', 'Open': 'Open t-1', 'Volume': 'Volume t-1'}, inplace=True)
+
+    # delete first and last rows cuz it has NaNs
+    data = data.iloc[1:-1]
+    return data
 
 # ---------- GET DATA -------------
 data = update_data("data.parquet")
@@ -65,8 +74,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-features = ['Open', 'High', 'Low', 'Volume', 'Weekday']
-features_to_scale = ['Open', 'High', 'Low', 'Volume']
+features = ['Open', 'High', 'Low', 'Volume', 'Weekday', 'Close t-1']
+features_to_scale = ['Open', 'High', 'Low', 'Volume', 'Close t-1']
 target = 'Close'
 
 scale_X = MinMaxScaler()
