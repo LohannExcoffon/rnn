@@ -53,7 +53,9 @@ def clean_data(data):
 
 # ---------- GET DATA -------------
 data = update_data("data.parquet")
+data = data.dropna()
 print(data.head())
+print(data.tail())
 
 # visualize graphs with price and volume
 data['Open'].plot(figsize=(12,6), title='TSLA Opening Price Over Time')
