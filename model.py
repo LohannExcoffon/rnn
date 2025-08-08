@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import random
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 import matplotlib.pyplot as plt
 
 # dicts for feature lstms trained above
@@ -34,7 +35,10 @@ X_seq_main, y_seq_main = create_sequences(X_main, y_main, timesteps) # create se
 
 # train the lstm for Close value
 model = Sequential()
-model.add(LSTM(50, activation='tanh', input_shape=(X_seq_main.shape[1], X_seq_main.shape[2])))
+model.add(LSTM(50, activation='tanh', return_sequences=True, input_shape=(X_seq_main.shape[1], X_seq_main.shape[2])))
+model.add(Dropout(0.2))
+model.add(LSTM(32, activation='tanh'))
+model.add(Dropout(0.2))
 model.add(Dense(1))
 model.compile(optimizer='adam', loss='mse')
 model.fit(X_seq_main, y_seq_main, epochs=10, batch_size=50, verbose=1)
@@ -88,7 +92,10 @@ for step in range(len(test_data) - timesteps):
         input_norm = input_norm.reshape(1, timesteps, len(input_feats))
         pred_norm = feat_model.predict(input_norm, verbose=0)
         pred_real = feat_scaler_y.inverse_transform(pred_norm)
-        next_feature_row.append(pred_real[0, 0])
+        if feat == 'Volume t-1':
+            next_feature_row.append(pred_real[0, 0] * np.random.uniform(0.6, 2))
+        else:
+            next_feature_row.append(pred_real[0, 0])
 
     # add features to total
     window = np.vstack([window[1:], next_feature_row])
